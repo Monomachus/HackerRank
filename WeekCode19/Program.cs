@@ -7,6 +7,8 @@ namespace WeekCode19
 {
     class Program
     {
+        private const int UPPER_LIMIT = 20;
+
         static void Main(string[] args)
         {
             const int DEFAULT_VALUE = 1000000;
@@ -42,47 +44,64 @@ namespace WeekCode19
                 i++;
             }
 
+            var dictCycles = new Dictionary<string, List<GraphEdge>>();
+
             var dict = listEdges.Select(singleEdge =>
                 new KeyValuePair<string, GraphEdge>(singleEdge.Key, singleEdge)).
                 ToDictionary(kvp => kvp.Key, kvp => kvp.Value);
 
 
-            int iterations = (minEdge.ToNode == 'A' || minEdge.ToNode == 'B') ? 2 : 1;
-
-            for (int j = 0; j < iterations; j++)
+            foreach (var edge in listEdges)
             {
-                var minCycleEdges = new List<GraphEdge>();
-                minCycleEdges.Add(minEdge);
+                var cycles = new List<GraphEdge>();
 
-                var minEdgeFromNode = minEdge.FromNode;
-                var nextToNode = minEdge.ToNode;
-                GraphEdge nextEdge = minEdge;
+                cycles.Add(edge);
+
+                var initialEdgeFromNode = edge.FromNode;
+                var nextToNode = edge.ToNode;
+                GraphEdge nextEdge = edge;
 
                 do
                 {
                     var toNode = dict[nextEdge.Key].ToNode;
                     var edgeSearch = dict.Where(kvp => kvp.Key.StartsWith(toNode.ToString()));
 
+                    var searchedEdge = edgeSearch.First().Value;
 
-                    if (toNode == 'A' || toNode == 'B') {
-                        edgeSearch = edgeSearch.Skip(j).Take(1);
-                    }
-
-                    var edge = edgeSearch.First().Value;
-
-                    minCycleEdges.Add(edge);
-                    nextToNode = edge.ToNode;
-                    nextEdge = edge;
+                    cycles.Add(searchedEdge);
+                    nextToNode = searchedEdge.ToNode;
+                    nextEdge = searchedEdge;
                 }
-                while (minEdgeFromNode != nextToNode);
+                while (initialEdgeFromNode != nextToNode);
 
-                int sum = minCycleEdges.Sum(edge => edge.Weight);
-                result = sum < 0 ? Math.Max(Math.Abs(sum), result) : Math.Max(-1, result);
+                dictCycles.Add(new string(cycles.Select(a => a.Key).Aggregate((a, b) => a + b).ToCharArray().Distinct().ToArray()), cycles);
             }
 
-            //int result = Math.Abs(sum);
+            var negativeCycles = dictCycles.Where(kvp => kvp.Value.Sum(g => g.Weight) < 0).ToDictionary(kvp => kvp.Key, kvp => kvp.Value);
+
+            if (negativeCycles.Any())
+            {
+                minEdge = negativeCycles.SelectMany(kvp => kvp.Value).OrderBy(g => g.Weight).First();
+
+                var minEdgeWeight = minEdge.Weight;
+
+                var tempEdgeWeight = minEdgeWeight;
+
+                foreach (var cycles in negativeCycles)
+                {
+                    int tempSum = cycles.Value.Sum(g => g.Weight);
+                    tempEdgeWeight = Math.Max(Math.Abs(tempSum), tempEdgeWeight);
+                }
+
+                result = tempEdgeWeight;
+
+            }
+            else {
+                result = -1;
+            }
 
             Console.WriteLine(result);
+            Console.ReadKey();
         }
     }
 
